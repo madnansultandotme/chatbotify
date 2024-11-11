@@ -5,18 +5,9 @@ jQuery(document).ready(function($) {
     const inputField = $('#chatbot-input');
     const sendButton = $('#chatbot-send');
     const minimizeBtn = $('.minimize-btn');
-    const maximizeBtn = $('.maximize-btn');
     
     let isMinimized = false;
-    let isMaximized = false;
     let typingTimer = null;
-    let originalDimensions = {
-        width: chatContainer.width(),
-        height: chatContainer.height(),
-        right: '20px',
-        bottom: '20px'
-    };
-    
     const loadingIndicator = '<div class="message ai-message"><div class="message-content"><div class="avatar">AI</div><div class="text typing-indicator"><span></span><span></span><span></span></div></div></div>';
 
     // Initialize the chat
@@ -27,49 +18,11 @@ jQuery(document).ready(function($) {
         scrollToBottom();
     }
 
-    // Handle window states (minimize/maximize)
-    function updateWindowState(state) {
-        switch(state) {
-            case 'minimize':
-                isMinimized = true;
-                isMaximized = false;
-                chatContainer.addClass('minimized').removeClass('maximized');
-                minimizeBtn.text('+');
-                maximizeBtn.text('□');
-                break;
-            case 'maximize':
-                isMinimized = false;
-                isMaximized = true;
-                chatContainer.removeClass('minimized').addClass('maximized');
-                minimizeBtn.text('−');
-                maximizeBtn.text('❐');
-                break;
-            case 'restore':
-                isMinimized = false;
-                isMaximized = false;
-                chatContainer.removeClass('minimized maximized');
-                minimizeBtn.text('−');
-                maximizeBtn.text('□');
-                break;
-        }
-    }
-
     // Handle minimizing/maximizing the chat window
     minimizeBtn.on('click', function() {
-        if (isMinimized) {
-            updateWindowState('restore');
-        } else {
-            updateWindowState('minimize');
-        }
-    });
-
-    // Handle maximize/restore
-    maximizeBtn.on('click', function() {
-        if (isMaximized) {
-            updateWindowState('restore');
-        } else {
-            updateWindowState('maximize');
-        }
+        isMinimized = !isMinimized;
+        chatContainer.toggleClass('minimized');
+        $(this).text(isMinimized ? '+' : '−');
     });
 
     // Enable/disable send button based on input
@@ -77,23 +30,16 @@ jQuery(document).ready(function($) {
         const inputVal = $(this).val();
         const shouldEnable = inputVal.trim().length > 0;
         sendButton.prop('disabled', !shouldEnable);
-        
-        // Handle input overflow
-        this.style.height = 'auto';
-        const newHeight = Math.min(this.scrollHeight, 100); // Max height of 100px
-        this.style.height = newHeight + 'px';
     });
 
-    // Format and display messages with overflow handling
+    // Format and display messages
     function addMessage(message, type = 'user') {
         const avatar = type === 'user' ? 'You' : 'AI';
         const messageHtml = `
             <div class="message ${type}-message">
                 <div class="message-content">
                     <div class="avatar">${avatar}</div>
-                    <div class="text">
-                        <div class="message-text-content">${message}</div>
-                    </div>
+                    <div class="text">${message}</div>
                 </div>
             </div>
         `;
@@ -126,7 +72,6 @@ jQuery(document).ready(function($) {
         // Display user message
         addMessage(message, 'user');
         inputField.val('');
-        inputField.trigger('input'); // Reset input height
         sendButton.prop('disabled', true);
 
         // Show typing indicator
@@ -141,6 +86,7 @@ jQuery(document).ready(function($) {
             console.log("Server Response:", response);
             removeTypingIndicator();
             
+            // Add slight delay to simulate natural conversation
             setTimeout(() => {
                 addMessage(response, 'ai');
             }, 500);
@@ -156,7 +102,7 @@ jQuery(document).ready(function($) {
     sendButton.on('click', sendMessage);
 
     inputField.on('keypress', function(e) {
-        if (e.which === 13 && !e.shiftKey && !sendButton.prop('disabled')) {
+        if (e.which === 13 && !sendButton.prop('disabled')) {
             e.preventDefault();
             sendMessage();
         }
@@ -165,12 +111,38 @@ jQuery(document).ready(function($) {
     // Handle window resize
     $(window).on('resize', function() {
         if ($(window).width() <= 480) {
-            if (!isMaximized) {
-                updateWindowState('maximize');
-            }
+            chatContainer.removeClass('minimized');
+            isMinimized = false;
+            minimizeBtn.text('−');
         }
     });
 
     // Initialize the chat
     initChat();
 });
+
+// Add CSS for typing indicator animation
+const style = document.createElement('style');
+style.textContent = `
+    .typing-indicator {
+        background-color: #e2e8f0 !important;
+        padding: 12px 16px !important;
+    }
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #94a3b8;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+`;
+document.head.appendChild(style);
